@@ -1,34 +1,36 @@
-# RTX 3070 Ti PPO Pipeline
+# RTX 3070 Ti PPO 強化學習管線
 
-A lightweight PyTorch PPO implementation for training on Gymnasium's
-`BipedalWalker-v3`, tuned for an 8 GB NVIDIA RTX 3070 Ti.
+這是一個使用 PyTorch 與 Gymnasium 建立的輕量化 PPO 訓練專案，目標環境為
+`BipedalWalker-v3`，並針對 8 GB NVIDIA RTX 3070 Ti 進行設定。
 
-## Features
+## 功能
 
-- 32-process `AsyncVectorEnv` rollout collection
-- Orthogonally initialized actor-critic network
-- GAE advantages and clipped PPO updates
-- CUDA, AMP, and optional `torch.compile()` support
-- TensorBoard metrics for FPS, losses, rewards, and VRAM
-- Best-model checkpointing to `checkpoints/best_model.pt`
+- 使用 32 個平行環境收集 rollout
+- Actor-Critic 網路使用 Orthogonal Initialization
+- 支援 GAE（Generalized Advantage Estimation）與 PPO clipped objective
+- 支援 CUDA、AMP 自動混合精度與可選的 `torch.compile()`
+- 使用 TensorBoard 記錄 FPS、Loss、Reward 與 VRAM
+- Reward 提升時自動儲存 `checkpoints/best_model.pt`
+- 使用 `render.py` 開啟實際的 BipedalWalker 動畫
 
-## Requirements
+## 系統需求
 
-- Linux with Python 3.10+
-- NVIDIA driver with CUDA support
-- NVIDIA RTX 3070 Ti or another CUDA-capable GPU
+- Linux
+- Python 3.10 或更新版本
+- 支援 CUDA 的 NVIDIA 驅動程式
+- NVIDIA RTX 3070 Ti 或其他 CUDA GPU
 
-The project dependencies are listed in [requirements.txt](requirements.txt).
+完整 Python 套件清單請參考 [requirements.txt](requirements.txt)。
 
-## Installation
+## 安裝
 
-On Debian or Ubuntu, install virtual-environment support if needed:
+Debian/Ubuntu 若尚未安裝 Python 虛擬環境模組，先執行：
 
 ```bash
 sudo apt install python3-venv
 ```
 
-Create and activate the project environment:
+建立並啟用虛擬環境：
 
 ```bash
 python3 -m venv .venv
@@ -37,64 +39,104 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-## Hardware Benchmark
+## GPU 硬體檢查
 
-Verify that PyTorch detects the RTX 3070 Ti before training:
+開始訓練前，先確認 PyTorch 能辨識 RTX 3070 Ti：
 
 ```bash
 python benchmark.py
 ```
 
-The benchmark reports the GPU name, total VRAM, matrix-multiplication throughput,
-and allocated/reserved VRAM.
+此指令會顯示 GPU 型號、VRAM 容量、矩陣乘法效能，以及目前已配置與保留的
+VRAM。
 
-## Training
+## 訓練
 
-Run the configured training job:
+依照 [config.yaml](config.yaml) 的設定執行完整訓練：
 
 ```bash
 python train.py
 ```
 
-For a short smoke test:
+快速測試管線可以使用較短的訓練量：
 
 ```bash
 python train.py --total-timesteps 65536
 ```
 
-Training writes TensorBoard event files under `runs/` and saves a new best model
-under `checkpoints/` whenever an episode reward improves.
+訓練過程會將 TensorBoard event 檔案寫入 `runs/`，並在完成 episode 且
+Reward 創新高時，將模型儲存到 `checkpoints/best_model.pt`。
 
-Launch TensorBoard in a separate terminal:
+## 查看 TensorBoard
+
+在另一個終端機啟動 TensorBoard：
 
 ```bash
 tensorboard --logdir runs
 ```
 
-## Configuration
+接著在瀏覽器開啟 `http://localhost:6006`，即可查看：
 
-Edit [config.yaml](config.yaml) to change the device, environment count,
-rollout length, PPO hyperparameters, logging directory, or checkpoint directory.
-The default rollout contains 65,536 transitions (`32 * 2048`) and uses a 2,048
-sample minibatch to balance GPU utilization and the 8 GB VRAM limit.
+- `charts/fps`
+- `charts/episode_reward`
+- `losses/policy_loss`
+- `losses/value_loss`
+- `system/vram_gb`
 
-## Project Layout
+## 查看 BipedalWalker 動畫
+
+完成訓練並產生 `checkpoints/best_model.pt` 後，執行：
+
+```bash
+python render.py
+```
+
+播放 5 個 episode：
+
+```bash
+python render.py --episodes 5
+```
+
+指定其他 checkpoint 或隨機種子：
+
+```bash
+python render.py --checkpoint checkpoints/best_model.pt --seed 123
+```
+
+短時間 smoke test 可能尚未完成 episode，因此不一定會產生 checkpoint。
+若要觀察學習後的行走效果，請執行完整的 `python train.py`。
+
+## 主要設定
+
+可在 [config.yaml](config.yaml) 修改 GPU、環境數量、rollout 長度、PPO
+超參數、TensorBoard 目錄與 checkpoint 目錄。
+
+預設設定如下：
+
+- 32 個平行環境
+- 每個環境每次收集 2,048 步
+- 每次 rollout 共 65,536 個 transition（`32 * 2048`）
+- Minibatch 大小為 2,048
+- Learning rate 為 `3e-4`
+- Gamma 為 `0.99`
+
+## 專案結構
 
 ```text
 .
-├── benchmark.py       # CUDA and VRAM benchmark
-├── config.yaml        # Hardware, environment, and PPO settings
-├── requirements.txt   # Python dependencies
+├── benchmark.py       # CUDA 與 VRAM 效能檢查
+├── config.yaml        # 硬體、環境與 PPO 設定
+├── render.py          # 載入模型並播放動畫
+├── requirements.txt   # Python 套件依賴
 ├── src/
-│   ├── agent.py       # GAE and PPO update logic
-│   ├── envs.py        # Vectorized Gymnasium environments
-│   └── model.py       # Actor-critic network
-└── train.py           # Training entry point
+│   ├── agent.py       # GAE 與 PPO 更新邏輯
+│   ├── envs.py        # Gymnasium 向量環境封裝
+│   └── model.py       # Actor-Critic 網路
+└── train.py           # 訓練入口
 ```
 
-## Notes
+## VRAM 與效能注意事項
 
-Rollout buffers use `float32` tensors and are allocated on the selected device.
-AMP is enabled automatically only when CUDA is available. If `torch.compile()`
-cannot be initialized on the installed PyTorch/runtime combination, training
-continues in eager mode.
+Rollout buffer 使用 `float32` tensor。AMP 只會在 CUDA 可用時啟用；如果
+`torch.compile()` 因 PyTorch 或執行環境不相容而無法初始化，程式會自動退回
+eager mode 繼續訓練。

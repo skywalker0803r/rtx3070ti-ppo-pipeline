@@ -19,6 +19,16 @@ from src.envs import clip_actions, create_vector_env
 from src.model import ActorCritic
 
 
+def episode_rewards_from_info(info: dict) -> list[float]:
+    """Extract only newly completed episode rewards from vectorized info."""
+
+    episode = info.get("episode")
+    if episode is None:
+        return []
+    mask = np.asarray(info.get("_episode", np.ones_like(episode["r"], dtype=bool)), dtype=bool)
+    return [float(reward) for reward in np.asarray(episode["r"])[mask]]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="config.yaml")
@@ -79,10 +89,7 @@ def main() -> None:
             value_buffer[step] = values
             observations = next_observations
             global_step += num_envs
-            if "final_info" in info:
-                for final_info in info["final_info"]:
-                    if final_info and "episode" in final_info:
-                        episode_rewards.append(final_info["episode"]["r"])
+            episode_rewards.extend(episode_rewards_from_info(info))
         with torch.no_grad():
             next_value = model.get_value(torch.as_tensor(observations, dtype=torch.float32, device=device))
         advantages, returns = compute_gae(reward_buffer, done_buffer, value_buffer, next_value, environment["gamma"], environment["gae_lambda"])
