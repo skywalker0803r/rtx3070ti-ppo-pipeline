@@ -1,0 +1,26 @@
+hardware:
+  device: cuda
+  enable_amp: true
+  compile_model: true
+
+environment:
+  env_id: BipedalWalker-v3
+  num_envs: 32
+  gamma: 0.99
+  gae_lambda: 0.95
+
+hyperparameters:
+  learning_rate: 3.0e-4
+  num_steps: 2048
+  batch_size: 2048
+  n_epochs: 10
+  clip_coef: 0.2
+  ent_coef: 0.001
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  total_timesteps: 1000000
+  seed: 1
+
+monitoring:
+  log_dir: runs
+  checkpoint_dir: checkpoints

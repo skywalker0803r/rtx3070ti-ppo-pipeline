@@ -1,0 +1,8 @@
+torch>=2.0.0
+torchvision
+gymnasium[classic_control,box2d]>=0.29.0
+numpy<2.0.0
+pyyaml
+tensorboard
+tqdm
+weasyprint
